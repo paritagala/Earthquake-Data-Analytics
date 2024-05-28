@@ -1,48 +1,62 @@
-#Step1: pip install requests in the terminal
-#Step2: pip install pandas library
-#Step 3: 
-import pandas as pd
 import requests
+import pandas as pd
 
-# API URL for earthquake data
-url = 'https://earthquake.usgs.gov/fdsnws/event/1/application.json'
+# URL to fetch earthquake data in GeoJSON format
+url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
 
-# Fetch data from the API
+# Step 1: Fetch the GeoJSON data from the URL
 response = requests.get(url)
 
 # Check if the request was successful
 if response.status_code == 200:
-    # Parse JSON response
     data = response.json()
 
-    # Extract earthquake data
-    event_types = data.get('eventtypes', [])
-    magnitude_types = data.get('magnitudetypes', [])
-    catalogs = data.get('catalogs', [])
-    contributors = data.get('contributors', [])
-    product_types = data.get('producttypes', [])
+    # Step 2: Parse the GeoJSON data
+    # Extract relevant information from each earthquake feature
+    features = data['features']
+    earthquake_data = []
 
-    # Ensure all arrays have the same length
-    max_length = max(len(event_types), len(magnitude_types), len(catalogs), len(contributors), len(product_types))
-    event_types += [''] * (max_length - len(event_types))
-    magnitude_types += [''] * (max_length - len(magnitude_types))
-    catalogs += [''] * (max_length - len(catalogs))
-    contributors += [''] * (max_length - len(contributors))
-    product_types += [''] * (max_length - len(product_types))
+    for feature in features:
+        properties = feature['properties']
+        geometry = feature['geometry']
 
-    # Create DataFrame
-    df = pd.DataFrame({
-        'Event Types': event_types,
-        'Magnitude Types': magnitude_types,
-        'Catalogs': catalogs,
-        'Contributors': contributors,
-        'Product Types': product_types
-    })
+        earthquake_info = {
+            'place': properties.get('place'),
+            'time': properties.get('time'),
+            'updated': properties.get('updated'),
+            'mag': properties.get('mag'),
+            'felt': properties.get('felt'),
+            'cdi': properties.get('cdi'),
+            'mmi': properties.get('mmi'),
+            'alert': properties.get('alert'),
+            'status': properties.get('status'),
+            'tsunami': properties.get('tsunami'),
+            'sig': properties.get('sig'),
+            'net': properties.get('net'),
+            'code': properties.get('code'),
+            'ids': properties.get('ids'),
+            'sources': properties.get('sources'),
+            'types': properties.get('types'),
+            'nst': properties.get('nst'),
+            'dmin': properties.get('dmin'),
+            'rms': properties.get('rms'),
+            'gap': properties.get('gap'),
+            'magType': properties.get('magType'),
+            'type': properties.get('type'),
+            'longitude': geometry['coordinates'][0],
+            'latitude': geometry['coordinates'][1],
+            'depth': geometry['coordinates'][2]
+        }
 
-    # Write DataFrame to Excel file
+        earthquake_data.append(earthquake_info)
+
+    # Step 3: Convert to a pandas DataFrame
+    df = pd.DataFrame(earthquake_data)
+
+    # Step 4: Write the DataFrame to an Excel file
     excel_file = 'earthquake_data.xlsx'
     df.to_excel(excel_file, index=False)
 
-    print(f'Earthquake data has been written to {excel_file}')
+    print(f"Earthquake data has been written to {excel_file}")
 else:
-    print(f'Failed to fetch data from the API. Status code: {response.status_code}')
+    print(f"Failed to fetch data, status code: {response.status_code}")

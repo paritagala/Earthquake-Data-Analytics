@@ -5,7 +5,7 @@ import requests
 
 #Step 3: Define the url of the API : in other words give a name to the API
 
-url = "https://earthquake.usgs.gov/fdsnws/event/1/application.json"
+url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
 
 #Step 4: Find the data from the API. This is when I used the comman "request get"
 
