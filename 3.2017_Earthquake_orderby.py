@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # URL to fetch earthquake data in GeoJSON format
-url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2017-01-01&endtime=2017-12-31&maxmagnitude&limit=5000'
+url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2017-01-01&endtime=2017-12-31&orderby=magnitude&limit=5000'
 
 # Step 1: Fetch the GeoJSON data from the URL
 response = requests.get(url)
