@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # URL to fetch earthquake data in GeoJSON format
-url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
+url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2017-01-01&endtime=2017-12-31&maxmagnitude&limit=5000'
 
 # Step 1: Fetch the GeoJSON data from the URL
 response = requests.get(url)
@@ -23,14 +23,14 @@ if response.status_code == 200:
         
         # Convert the timestamp to a datetime object
         timestamp = properties.get('time')
-        date_time = datetime.utcfromtimestamp(timestamp / 1000)  # Convert milliseconds to seconds
+        date_time = datetime.fromtimestamp(timestamp / 1000)  # Convert milliseconds to seconds
 
         # Check if the year is 2017
         if date_time.year == 2017:
             earthquake_info = {
                 'place': properties.get('place'),
                 'time': date_time,
-                'updated': datetime.utcfromtimestamp(properties.get('updated') / 1000) if properties.get('updated') else None,
+                'updated': datetime.fromtimestamp(properties.get('updated') / 1000) if properties.get('updated') else None,
                 'mag': properties.get('mag'),
                 'felt': properties.get('felt'),
                 'cdi': properties.get('cdi'),
