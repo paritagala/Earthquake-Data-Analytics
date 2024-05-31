@@ -1,22 +1,34 @@
-#Step 1 : Pip install requests in the terminal
-#Step 2: Import requests below
-
 import requests
+import pandas as pd
+from datetime import datetime, timedelta
 
-#Step 3: Define the url of the API : in other words give a name to the API
+# Base URL
+base_url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson'
 
-url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
+# Start and end dates
+start_date = datetime(2017, 1, 1)
+end_date = datetime(2017, 12, 31)
 
-#Step 4: Find the data from the API. This is when I used the comman "request get"
+# Generate list of all dates in 2017
+date_list = [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]
 
-response = requests.get(url)
+# Container for all earthquake data
+all_earthquake_data = []
 
-#Step 5: Checking if the request was successful it will return the status code 200
-if response.status_code == 200:
-    # Step 6: If the status code is 200 the parse the json response
-    data = response.json()
+# Fetch data for each day
+for single_date in date_list:
+    start_time = single_date.strftime('%Y-%m-%dT00:00:00')
+    end_time = (single_date + timedelta(days=1)).strftime('%Y-%m-%dT00:00:00')
+    
+    url = f"{base_url}&starttime={start_time}&endtime={end_time}&orderby=magnitude"
+    
+    # Make the HTTP request
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
     #Step 7: And print data
-    print(data)
+    print(f"Found data, status code:{response.status_code}")
 
 #Step 8: Else print failed to find the data
 else: 
