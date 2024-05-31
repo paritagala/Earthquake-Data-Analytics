@@ -1,66 +1,83 @@
 import requests
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+import numpy as np
 
-# URL to fetch earthquake data in GeoJSON format
-url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2017-01-01&endtime=2017-12-31&limit=20000'
+# Base URL
+base_url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson'
 
-# Step 1: Fetch the GeoJSON data from the URL
-response = requests.get(url)
+# Start and end dates
+start_date = datetime(2017, 1, 1)
+end_date = datetime(2017, 12, 31)
 
-# Check if the request was successful
-if response.status_code == 200:
-    data = response.json()
+# Generate list of all dates in 2017
+date_list = [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]
 
-    # Step 2: Parse the GeoJSON data
-    # Extract relevant information from each earthquake feature
-    features = data['features']
-    earthquake_data = []
+# Container for all earthquake data
+earthquake_data = []
 
-    for feature in features:
-        properties = feature['properties']
+# Fetch data for each day
+for single_date in date_list:
+    start_time = single_date.strftime('%Y-%m-%dT00:00:00')
+    end_time = (single_date + timedelta(days=1)).strftime('%Y-%m-%dT00:00:00')
+    
+    url = f"{base_url}&starttime={start_time}&endtime={end_time}&orderby=magnitude"
+    
+    # Make the HTTP request
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        features = data.get('features', [])
         
-        # Convert the timestamp to a datetime object
-        timestamp = properties.get('time')
-        date_time = datetime.utcfromtimestamp(timestamp / 1000)  # Convert milliseconds to seconds
+        for feature in features:
+            properties = feature['properties']
+            geometry = feature['geometry']
 
-        # Extract magnitude and hour of the day
-        magnitude = properties.get('mag')
-        hour_of_day = date_time.hour
+            # Convert the timestamp to a datetime object
+            timestamp = properties.get('time')
+            date_time = datetime.fromtimestamp(timestamp / 1000)  # Convert milliseconds to seconds
 
-        if magnitude is not None:  # Check if magnitude is available
+            # Extract the magnitude and hour of the day
+            magnitude = properties.get('mag')
+            hour_of_day = date_time.hour
+
             earthquake_info = {
                 'magnitude': magnitude,
                 'hour_of_day': hour_of_day
             }
 
             earthquake_data.append(earthquake_info)
+    else:
+        print(f"Failed to fetch data for {single_date.strftime('%Y-%m-%d')}, status code: {response.status_code}")
 
-    # Step 3: Create buckets for magnitude ranges
-    magnitude_buckets = {
-        '0-1': (0, 1),
-        '1-2': (1, 2),
-        '2-3': (2, 3),
-        '3-4': (3, 4),
-        '4-5': (4, 5),
-        '5-6': (5, 6),
-        '>6': (6, float('inf'))
-    }
+# Step 2: Convert to a pandas DataFrame
+df = pd.DataFrame(earthquake_data)
 
-    # Step 4: Count earthquakes in each hour for each magnitude range
-    hour_counts = {}
+# Step 3: Define magnitude buckets
+bins = [0, 1, 2, 3, 4, 5, 6, np.inf]
+labels = ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '>6']
+df['mag_binned'] = pd.cut(df['magnitude'], bins=bins, labels=labels, right=False)
 
-    for bucket_name, (lower_limit, upper_limit) in magnitude_buckets.items():
-        # Filter earthquakes within the magnitude range
-        filtered_earthquakes = [earthquake['hour_of_day'] for earthquake in earthquake_data if earthquake['magnitude'] is not None and lower_limit <= earthquake['magnitude'] < upper_limit]
-        # Count occurrences of each hour
-        hour_counts[bucket_name] = {hour: filtered_earthquakes.count(hour) for hour in range(24)}
+# Step 4: Calculate the most probable hour of the day for each bucket
+results = []
 
-    # Step 5: Convert the results to a DataFrame and write to Excel
-    df = pd.DataFrame(hour_counts)
-    excel_file = 'earthquake_hourly_analysis.xlsx'
-    df.to_excel(excel_file)
+for cat in labels:
+    cat_data = df[df['mag_binned'] == cat]['hour_of_day']
+    if not cat_data.empty:
+        hour_mode = int(cat_data.mode()[0])
+        hour_mode_counts = cat_data.value_counts().max()
+        results.append({'Magnitude Category': cat, 'Most Probable Hour': hour_mode, 'Count': hour_mode_counts})
+        print('For magnitude category {} the most probable hour of the day for an earthquake is {} with {} recorded events.'.format(cat, hour_mode, hour_mode_counts))
+    else:
+        results.append({'Magnitude Category': cat, 'Most Probable Hour': None, 'Count': 0})
+        print('For magnitude category {} there are no recorded events.'.format(cat))
 
-    print(f"Hourly analysis of earthquakes by magnitude range has been written to {excel_file}")
-else:
-    print(f"Failed to fetch data, status code: {response.status_code}")
+# Step 5: Convert the results to a DataFrame
+results_df = pd.DataFrame(results)
+
+# Step 6: Write the results to an Excel file
+excel_file = 'most_probable_hour_by_magnitude_2017.xlsx'
+results_df.to_excel(excel_file, index=False)
+
+print(f"The most probable hour of the day for each magnitude range in 2017 has been written to {excel_file}")
